@@ -8,9 +8,7 @@ public class G20FTPClient {
 
     private final String STD_URL = "ftp.cs.brown.edu";
     private final String STD_USERNAME = "anonymous";
-
     private int dataPort;
-    private byte[] buffer;
 
     private Socket commandSocket;
     private Socket dataSocket;
@@ -42,6 +40,7 @@ public class G20FTPClient {
             System.out.print("SUCCESS\n");
             commandReply(1);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - Failed command channel connection");
         }
     }
@@ -72,6 +71,7 @@ public class G20FTPClient {
             commandReply(1);
 
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - Failed data channel connection");
         }
     }
@@ -116,9 +116,12 @@ public class G20FTPClient {
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - Main while loop failed");
         } finally {
             //Ensures all resources are closed if program crashes
+            toServer.flush();
+            fileOutputStream.flush();
             if (input != null) input.close();
             if (fileOutputStream != null) fileOutputStream.close();
             if (bufferedInputStream != null) bufferedInputStream.close();
@@ -134,6 +137,7 @@ public class G20FTPClient {
             System.out.print(">");
             return input.nextLine();
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - User input failed");
         }
     }
@@ -146,16 +150,21 @@ public class G20FTPClient {
 
     //Prints and returns server's reply from local inputstream. Should be called when commanding the server
     private String commandReply(int expectedReplies) {
-        String reply;
+        String reply, temp;
         if (expectedReplies == 1) {
-            reply = "SERVER:\t" + fromServer.nextLine();
+            temp = fromServer.nextLine();
+            System.out.println("SERVER:\t" + temp);
+            reply = "SERVER:\t" + temp;
         } else {
-            reply = "SERVER:\t" + fromServer.nextLine();
+            temp = fromServer.nextLine();
+            System.out.print("SERVER:\t" + temp);
+            reply = "SERVER:\t" + temp;
             for (int i = 1; i < expectedReplies; i++) {
-                reply += "\nSERVER:\t" + fromServer.nextLine();
+                temp = fromServer.nextLine();
+                System.out.print("\nSERVER:\t" + temp);
+                reply += "\nSERVER:\t" + temp;
             }
         }
-        System.out.println(reply);
         return reply;
     }
 
@@ -185,17 +194,23 @@ public class G20FTPClient {
             fileOutputStream = new FileOutputStream(fileName);
 
             //Tells server to retrieve file, reads it from the data socket and saves it
+            System.out.print("LOCAL:\tCommanding server to transfer file " + filepath + " ... ");
             commandServer("RETR " + filepath);
-            buffer = new byte[4096];
+            System.out.print("SUCCESS\n");
+            System.out.print("LOCAL:\tSaves the file as " + fileName + " ... ");
+            byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
                 fileOutputStream.write(buffer, 0, bytesRead);
             }
-            commandReply(2);
+            fileOutputStream.flush();
+            System.out.print("SUCCESS\n");
+            commandReply(4);
 
-            //TODO: Mangler at udskrive 1KB af filen
+            //TODO: Mangler at udskrive 1KB af filen & kunne downloade to seperate filer
 
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - Failed to download file");
         }
     }
@@ -205,12 +220,15 @@ public class G20FTPClient {
         try {
             //TODO: Mangler implementering
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("!!! - Failed to upload file");
         }
     }
 
     //Ensures that all resources closes before shutting down the program
     private void quietExit() throws Exception {
+        toServer.flush();
+        fileOutputStream.flush();
         if (input != null) input.close();
         if (fileOutputStream != null) fileOutputStream.close();
         if (bufferedInputStream != null) bufferedInputStream.close();
