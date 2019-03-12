@@ -1,6 +1,4 @@
-import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -12,10 +10,10 @@ public class G20FTPClient {
 
     private Socket commandSocket;
     private Socket dataSocket;
-    private PrintWriter toServer;
+    private BufferedWriter toServer;
     private BufferedInputStream bufferedInputStream;
     private FileOutputStream fileOutputStream;
-    private Scanner fromServer;
+    private BufferedReader fromServer;
     private Scanner input = new Scanner(System.in);
 
     public static void main(String[] args) throws Exception {
@@ -30,8 +28,8 @@ public class G20FTPClient {
             System.out.print("SUCCESS\n");
 
             System.out.print("LOCAL:\tInitializing command socket streams ... ");
-            toServer = new PrintWriter(commandSocket.getOutputStream());
-            fromServer = new Scanner(commandSocket.getInputStream());
+            toServer = new BufferedWriter(new OutputStreamWriter(commandSocket.getOutputStream()));
+            fromServer = new BufferedReader(new InputStreamReader(commandSocket.getInputStream()));
             System.out.print("SUCCESS\n");
             commandReply(5);
 
@@ -51,7 +49,7 @@ public class G20FTPClient {
             toServer.write("PASV\r\n");
             toServer.flush();
             System.out.print("SUCCESS\n");
-            String passiveInfo = fromServer.nextLine();
+            String passiveInfo = fromServer.readLine();
             String[] infoSplit = passiveInfo.split("\\D+");
             dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
             System.out.println("SERVER:\t" + passiveInfo);
@@ -143,27 +141,37 @@ public class G20FTPClient {
     }
 
     //Writes a command to local outputstream and flushes it to the server
-    private void commandServer(String command) {
-        toServer.write(command + "\r\n");
-        toServer.flush();
+    private void commandServer(String command) throws Exception {
+        try {
+            toServer.write(command + "\r\n");
+            toServer.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("!!! - Failed writing to server");
+        }
     }
 
     //Prints and returns server's reply from local inputstream. Should be called when commanding the server
-    private String commandReply(int expectedReplies) {
+    private String commandReply(int expectedReplies) throws Exception {
         String reply, temp;
-        if (expectedReplies == 1) {
-            temp = fromServer.nextLine();
-            System.out.println("SERVER:\t" + temp);
-            reply = "SERVER:\t" + temp;
-        } else {
-            temp = fromServer.nextLine();
-            System.out.print("SERVER:\t" + temp);
-            reply = "SERVER:\t" + temp;
-            for (int i = 1; i < expectedReplies; i++) {
-                temp = fromServer.nextLine();
-                System.out.print("\nSERVER:\t" + temp);
-                reply += "\nSERVER:\t" + temp;
+        try {
+            if (expectedReplies == 1) {
+                temp = fromServer.readLine();
+                System.out.println("SERVER:\t" + temp);
+                reply = "SERVER:\t" + temp;
+            } else {
+                temp = fromServer.readLine();
+                System.out.print("SERVER:\t" + temp);
+                reply = "SERVER:\t" + temp;
+                for (int i = 1; i < expectedReplies; i++) {
+                    temp = fromServer.readLine();
+                    System.out.print("\nSERVER:\t" + temp);
+                    reply += "\nSERVER:\t" + temp;
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("!!! - Failed to read reply");
         }
         return reply;
     }
