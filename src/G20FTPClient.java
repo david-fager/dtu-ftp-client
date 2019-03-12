@@ -85,20 +85,19 @@ public class G20FTPClient {
 
             //Main while loop showing and managing the user's options
             while (true) {
-                System.out.println("\nPRESS ENTER TO CONTINUE");
-                input.nextLine();
-                System.out.println("--------------- CONNECTED TO FTP SERVER: " + STD_URL + " ---------------\n" +
-                                "############################# G20 FTP Client #############################\n" +
-                                "#                                                                        #\n" +
-                                "#     WELCOME TO THE G20 FTP CLIENT                                      #\n" +
-                                "#     WRITE A CHARACTER TO CONTINUE                                      #\n" +
-                                "#                                                                        #\n" +
-                                "#     COMMANDS:                                                          #\n" +
-                                "#     > DL - Download file from server                                   #\n" +
-                                "#     > UP - Upload file to server                                       #\n" +
-                                "#     > Q - Quit the program                                             #\n" +
-                                "#                                                                        #\n" +
-                                "##########################################################################");
+                System.out.println("\n" +
+                        "--------------- CONNECTED TO FTP SERVER: " + STD_URL + " ---------------\n" +
+                        "############################# G20 FTP Client #############################\n" +
+                        "#                                                                        #\n" +
+                        "#     WELCOME TO THE G20 FTP CLIENT                                      #\n" +
+                        "#     ENTER A CHARACTER TO CONTINUE                                      #\n" +
+                        "#                                                                        #\n" +
+                        "#     COMMANDS:                                                          #\n" +
+                        "#     > DL - Download file from server                                   #\n" +
+                        "#     > UP - Upload file to server                                       #\n" +
+                        "#     > Q - Quit the program                                             #\n" +
+                        "#                                                                        #\n" +
+                        "##########################################################################");
 
                 switch (handleUserInput().toLowerCase()) {
                     case "dl":
