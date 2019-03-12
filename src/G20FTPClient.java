@@ -1,6 +1,4 @@
-import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -8,32 +6,31 @@ public class G20FTPClient {
 
     private final String STD_URL = "ftp.cs.brown.edu";
     private final String STD_USERNAME = "anonymous";
-    private Scanner input = new Scanner(System.in);
-
     private int dataPort;
-    private byte[] buffer;
+    private boolean firstDataConnection = true;
 
     private Socket commandSocket;
     private Socket dataSocket;
-    private PrintWriter toServer;
+    private BufferedWriter toServer;
+    private BufferedReader fromServer;
     private BufferedInputStream bufferedInputStream;
     private FileOutputStream fileOutputStream;
-    private Scanner fromServer;
+    private Scanner input = new Scanner(System.in);
 
     public static void main(String[] args) throws Exception {
         G20FTPClient g20FTPClient = new G20FTPClient();
-        g20FTPClient.showMenu();
+        g20FTPClient.clientFlow();
     }
 
-    private void prepareCommandChannel() throws Exception{
+    private void prepareCommandChannel() throws Exception {
         try {
             System.out.print("LOCAL:\tConnecting to " + STD_URL + " (command channel) ... ");
-            commandSocket = new Socket(STD_URL,21);
+            commandSocket = new Socket(STD_URL, 21);
             System.out.print("SUCCESS\n");
 
             System.out.print("LOCAL:\tInitializing command socket streams ... ");
-            toServer = new PrintWriter(commandSocket.getOutputStream());
-            fromServer = new Scanner(commandSocket.getInputStream());
+            toServer = new BufferedWriter(new OutputStreamWriter(commandSocket.getOutputStream()));
+            fromServer = new BufferedReader(new InputStreamReader(commandSocket.getInputStream()));
             System.out.print("SUCCESS\n");
             commandReply(5);
 
@@ -42,30 +39,22 @@ public class G20FTPClient {
             System.out.print("SUCCESS\n");
             commandReply(1);
         } catch (Exception e) {
-            System.out.println("!!! - Failed command channel connection");
             e.printStackTrace();
+            throw new Exception("!!! - Failed command channel connection");
         }
     }
 
-    private void prepareDataChannel() throws Exception{
+    private void prepareDataChannel() throws Exception {
         try {
             System.out.print("LOCAL:\tSetting server mode passive ... ");
             toServer.write("PASV\r\n");
             toServer.flush();
             System.out.print("SUCCESS\n");
-            String passiveInfo = fromServer.nextLine();
+            String passiveInfo = fromServer.readLine();
             String[] infoSplit = passiveInfo.split("\\D+");
             dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
             System.out.println("SERVER:\t" + passiveInfo);
             System.out.println("LOCAL:\tData channel port set to: " + dataPort);
-
-            System.out.print("LOCAL:\tConnecting to " + STD_URL + " (data channel) ... ");
-            dataSocket = new Socket(STD_URL, dataPort);
-            System.out.print("SUCCESS\n");
-
-            System.out.print("LOCAL:\tInitializing data socket streams ... ");
-            bufferedInputStream = new BufferedInputStream(dataSocket.getInputStream());
-            System.out.print("SUCCESS\n");
 
             System.out.print("LOCAL:\tSetting server transfer type to binary ... ");
             commandServer("TYPE I");
@@ -73,132 +62,232 @@ public class G20FTPClient {
             commandReply(1);
 
         } catch (Exception e) {
-            System.out.println("!!! - Failed data channel connection");
             e.printStackTrace();
+            throw new Exception("!!! - Failed setting up to use data channel");
         }
     }
 
-    private void showMenu() throws Exception {
+    //Controls the flow of the program
+    private void clientFlow() throws Exception {
         try {
+            //Ensures both a socket for commanding and a socket for data receiving are opened and resources connected
             prepareCommandChannel();
             prepareDataChannel();
-             while (true) {
-                 System.out.println("\nPRESS ENTER TO CONTINUE");
-                 input.nextLine();
-                 System.out.println(
-                         "--------------- CONNECTED TO FTP SERVER: " + STD_URL + " ---------------\n" +
-                         "############################# G20 FTP Client #############################\n" +
-                         "#                                                                        #\n" +
-                         "#     WELCOME TO THE G20 FTP CLIENT                                      #\n" +
-                         "#     WRITE A CHARACTER TO CONTINUE                                      #\n" +
-                         "#                                                                        #\n" +
-                         "#     COMMANDS:                                                          #\n" +
-                         "#     > DL - Download file from server                                   #\n" +
-                         "#     > UP - Upload file to server                                       #\n" +
-                         "#     > Q - Quit the program                                             #\n" +
-                         "#                                                                        #\n" +
-                         "##########################################################################");
 
-                 switch (handleUserInput().toLowerCase()) {
-                     case "dl":
-                         downloadFile();
-                         break;
-                     case "up":
-                         uploadFile();
-                         break;
-                     case "q":
-                         System.out.println("LOCAL:\tQutting program ...");
-                         quietExit();
-                         break;
-                     default:
-                         System.out.println("!!! - Wrong input");
-                         break;
-                 }
-             }
+            //Main while loop showing and managing the user's options
+            while (true) {
+                commandServer("STAT");
+                commandServer("SYST");
+                commandReply(2);
+                System.out.println("" +
+                        "--------------- CONNECTED TO FTP SERVER: " + STD_URL + " ---------------\n" +
+                        "############################# G20 FTP Client #############################\n" +
+                        "#                                                                        #\n" +
+                        "#     WELCOME TO THE G20 FTP CLIENT                                      #\n" +
+                        "#     ENTER A CHARACTER TO CONTINUE                                      #\n" +
+                        "#                                                                        #\n" +
+                        "#     COMMANDS:                                                          #\n" +
+                        "#     > TC - Test client by downloading 2 files and uploading 1          #\n" +
+                        "#     > DL - Download file from server                                   #\n" +
+                        "#     > UP - Upload file to server                                       #\n" +
+                        "#     > Q - Quit the program                                             #\n" +
+                        "#                                                                        #\n" +
+                        "##########################################################################");
+
+                switch (handleUserInput().toLowerCase()) {
+                    case "tc":
+                        downloadFile(true);
+                        downloadFile(true);
+                        uploadFile(true);
+                        break;
+                    case "dl":
+                        downloadFile(false);
+                        break;
+                    case "up":
+                        uploadFile(false);
+                        break;
+                    case "q":
+                        System.out.println("LOCAL:\tQutting program ...");
+                        quietExit();
+                        break;
+                    default:
+                        System.out.println("!!! - Wrong input");
+                        break;
+                }
+            }
         } catch (Exception e) {
-            System.out.println("!!! - Main while loop failed");
+            e.printStackTrace();
+            throw new Exception("!!! - Main while loop failed");
         } finally {
-            if (fileOutputStream != null) fileOutputStream.close();
-            if (bufferedInputStream != null) bufferedInputStream.close();
-            if (toServer != null) toServer.close();
-            if (dataSocket != null) dataSocket.close();
+            //Ensures used resources are closed if program crashes
+            toServer.flush();
+            fileOutputStream.flush();
+            if (input != null) input.close();
+            if (toServer != null) {
+                toServer.flush();
+                toServer.close();
+            }
             if (commandSocket != null) commandSocket.close();
         }
     }
 
-    private String handleUserInput() {
+    //Returns what the user writes to the scanner
+    private String handleUserInput() throws Exception {
         try {
             System.out.print(">");
             return input.nextLine();
         } catch (Exception e) {
-            System.out.println("!!! - User input failed");
             e.printStackTrace();
+            throw new Exception("!!! - User input failed");
         }
-        return null;
     }
 
-    private void commandServer(String command) {
-        toServer.write(command + "\r\n");
-        toServer.flush();
+    //Writes a command to local outputstream and flushes it to the server
+    private void commandServer(String command) throws Exception {
+        try {
+            toServer.write(command + "\r\n");
+            toServer.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("!!! - Failed writing to server");
+        }
     }
 
-    private String commandReply(int expectedReplies) {
-        String reply = "";
-        if (expectedReplies == 1) {
-            reply = "SERVER:\t" + fromServer.nextLine();
-        }  else {
-            reply = "SERVER:\t" + fromServer.nextLine();
-            for (int i = 1; i < expectedReplies; i++) {
-                reply += "\nSERVER:\t" + fromServer.nextLine();
+    //Prints and returns server's reply from local inputstream. Should be called when commanding the server
+    private String commandReply(int expectedReplies) throws Exception {
+        String reply, temp;
+        try {
+            if (expectedReplies == 1) {
+                temp = fromServer.readLine();
+                System.out.println("SERVER:\t" + temp);
+                reply = "SERVER:\t" + temp;
+            } else {
+                temp = fromServer.readLine();
+                System.out.println("SERVER:\t" + temp);
+                reply = "SERVER:\t" + temp;
+                for (int i = 1; i < expectedReplies; i++) {
+                    temp = fromServer.readLine();
+                    System.out.println("SERVER:\t" + temp);
+                    reply += "\nSERVER:\t" + temp;
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("!!! - Failed to read reply");
         }
-        System.out.println(reply);
         return reply;
     }
 
-    private void downloadFile() throws Exception {
+    //Downloads a file from the FTP server
+    private void downloadFile(boolean testmode) throws Exception {
         try {
-            int replyCode = 0;
+            //Opening the dataSocket. Sender automatically closes after file transfer.
+            System.out.print("LOCAL:\tConnecting to " + STD_URL + " (data channel) ... ");
+            dataSocket = new Socket(STD_URL, dataPort);
+            System.out.print("SUCCESS\n");
+            System.out.print("LOCAL:\tInitializing data socket streams ... ");
+            bufferedInputStream = new BufferedInputStream(dataSocket.getInputStream());
+            System.out.print("SUCCESS\n");
+
+            //Asks user to specify server filepath for file to download if test is not being run
             System.out.println("LOCAL:\tEnter the filepath for the file on the server (E.g.: /pub/README)");
-            String filepath = handleUserInput();
-            if (filepath.equals("")) {
-                filepath = "/pub/README";
+            String filepath;
+            if (testmode) {
+                if (firstDataConnection) {
+                    filepath = "/pub/README";
+                } else {
+                    filepath = "/u/dg/Collision.java";
+                }
+            } else {
+                filepath = handleUserInput();
             }
+            if (filepath.equals("")) {
+                filepath = "/pub/README"; //Default
+                System.out.println("LOCAL:\tUsing default: " + filepath);
+            }
+
+            //Ask server for the size of the file to download, to ensure the file even exists
             commandServer("SIZE " + filepath);
             String[] reply = commandReply(1).split("\\s+");
             if (reply.length > 3) {
-                System.out.println("!!! - File not found on server");
-                throw new Exception();
+                throw new Exception("!!! - File not found on server");
             }
 
+            //Asks the user where to download the file to
             System.out.println("LOCAL:\tEnter designated file name (E.g. MyFile.txt)");
-            String fileName = handleUserInput();
+            String fileName;
+            if (testmode) {
+                if (firstDataConnection) {
+                    fileName = "TestOver1KB";
+                } else {
+                    fileName = "TestUnder1KB";
+                }
+            } else {
+                fileName = handleUserInput();
+            }
             if (fileName.equals("")) {
-                fileName = "DownloadedFile.txt";
+                fileName = "DownloadedFile.txt"; //Default
+                System.out.println("LOCAL:\tUsing default: " + fileName);
             }
             fileOutputStream = new FileOutputStream(fileName);
 
+            //Tells server to retrieve file, reads it from the data socket and saves it
+            System.out.print("LOCAL:\tCommanding server to transfer file " + filepath + " ... ");
             commandServer("RETR " + filepath);
-            buffer = new byte[4096];
+            System.out.print("SUCCESS\n");
+            System.out.print("LOCAL:\tSaves the file as " + fileName + " ... ");
+            byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
-                fileOutputStream.write(buffer,0,bytesRead);
+                fileOutputStream.write(buffer, 0, bytesRead);
             }
-            commandReply(2);
+            fileOutputStream.flush();
+            System.out.print("SUCCESS\n");
+            if (firstDataConnection) {
+                commandReply(4);
+                firstDataConnection = false;
+            } else {
+                commandReply(3);
+            }
+
+            //TODO: Mangler at udskrive 1KB af filen & kunne downloade to seperate filer
 
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Exception("!!! - Failed to download file");
+        } finally {
+            //Ensures used resources are closed if program crashes
+            if (bufferedInputStream != null) bufferedInputStream.close();
+            if (dataSocket != null) dataSocket.close();
+            if (fileOutputStream != null) {
+                fileOutputStream.flush();
+                fileOutputStream.close();
+            }
         }
     }
 
-    private void uploadFile() {
-
+    //Uploads a pre-made file from a local directory to the server
+    private void uploadFile(boolean testmode) throws Exception {
+        try {
+            //TODO: Mangler implementering
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("!!! - Failed to upload file");
+        }
     }
 
-    private void quietExit() throws Exception{
-        if (fileOutputStream != null) fileOutputStream.close();
+    //Ensures that all resources closes before shutting down the program
+    private void quietExit() throws Exception {
+        if (input != null) input.close();
+        if (toServer != null) {
+            toServer.flush();
+            toServer.close();
+        }
+        if (fileOutputStream != null) {
+            fileOutputStream.flush();
+            fileOutputStream.close();
+        }
         if (bufferedInputStream != null) bufferedInputStream.close();
-        if (toServer != null) toServer.close();
         if (dataSocket != null) dataSocket.close();
         if (commandSocket != null) commandSocket.close();
         System.exit(0);
