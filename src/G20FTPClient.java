@@ -254,15 +254,15 @@ public class G20FTPClient {
             int count = 1;
             for (byte b : buffer) {
                 if (count == 1)
-                    System.out.print("FILE: ");
+                    System.out.print("FILE |");
                 System.out.print((char)b);
                 if (b == 10) {
-                    System.out.print("FILE: ");
+                    System.out.print("FILE |");
                 }
                 if (count++ > 1024)
                     break;
             }
-            System.out.print("\nLOCAL: END OF KILOBYTE\n\n");
+            System.out.print("\nLOCAL: END OF KILOBYTE OR FILE\n\n");
 
         } catch (Exception e) {
             e.printStackTrace();
