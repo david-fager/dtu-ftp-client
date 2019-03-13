@@ -9,11 +9,12 @@ public class G20FTPClient {
     private int dataPort;
     private boolean firstDataConnection = true;
 
-    private Socket commandSocket;
+    private Socket controlSocket;
     private Socket dataSocket;
     private BufferedWriter serverWriter;
     private BufferedReader serverReader;
     private BufferedInputStream bufferedInputStream;
+    private BufferedOutputStream bufferedOutputStream;
     private FileOutputStream fileOutputStream;
     private Scanner inputScanner = new Scanner(System.in);
 
@@ -25,12 +26,12 @@ public class G20FTPClient {
     private void prepareControlChannel() throws Exception {
         try {
             System.out.print("LOCAL:\tOpening socket to " + STD_URL + " on port " + 21 + " (control channel) ... ");
-            commandSocket = new Socket(STD_URL, 21);
+            controlSocket = new Socket(STD_URL, 21);
             System.out.print("SUCCESS\n");
 
             System.out.print("LOCAL:\tInitializing control socket streams ... ");
-            serverWriter = new BufferedWriter(new OutputStreamWriter(commandSocket.getOutputStream()));
-            serverReader = new BufferedReader(new InputStreamReader(commandSocket.getInputStream()));
+            serverWriter = new BufferedWriter(new OutputStreamWriter(controlSocket.getOutputStream()));
+            serverReader = new BufferedReader(new InputStreamReader(controlSocket.getInputStream()));
             System.out.print("SUCCESS\n");
             serverReply(5);
 
@@ -126,7 +127,7 @@ public class G20FTPClient {
                 serverWriter.flush();
                 serverWriter.close();
             }
-            if (commandSocket != null) commandSocket.close();
+            if (controlSocket != null) controlSocket.close();
         }
     }
 
@@ -179,6 +180,9 @@ public class G20FTPClient {
 
     //Downloads a file from the FTP server
     private void downloadFile(boolean testmode) throws Exception {
+        String filepath;
+        String fileName;
+        String[] sizeReply;
         try {
             //Opening the dataSocket. Sender automatically closes after file transfer.
             System.out.print("LOCAL:\tOpening socket to " + STD_URL + " on port " + dataPort + " (data channel) ... ");
@@ -190,7 +194,6 @@ public class G20FTPClient {
 
             //Asks user to specify server filepath for file to download if test is not being run
             System.out.println("LOCAL:\tEnter the filepath for the file on the server (E.g.: /pub/README)");
-            String filepath;
             if (testmode) {
                 if (firstDataConnection) {
                     filepath = "/pub/README";
@@ -207,14 +210,13 @@ public class G20FTPClient {
 
             //Ask server for the size of the file to download, to ensure the file even exists
             serverCommand("SIZE " + filepath);
-            String[] reply = serverReply(1).split("\\s+");
-            if (reply.length > 3) {
+            sizeReply = serverReply(1).split("\\s+");
+            if (sizeReply.length > 3) {
                 throw new Exception("!!! - File not found on server");
             }
 
             //Asks the user where to download the file to
             System.out.println("LOCAL:\tEnter designated file name (E.g. MyFile.txt)");
-            String fileName;
             if (testmode) {
                 if (firstDataConnection) {
                     fileName = "TestOver1KB";
@@ -235,7 +237,7 @@ public class G20FTPClient {
             serverCommand("RETR " + filepath);
             System.out.print("SUCCESS\n");
             System.out.print("LOCAL:\tSaves the file as " + fileName + " ... ");
-            byte[] buffer = new byte[Integer.parseInt(reply[2])];
+            byte[] buffer = new byte[Integer.parseInt(sizeReply[2])];
             int bytesRead;
             while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
                 fileOutputStream.write(buffer, 0, bytesRead);
@@ -281,10 +283,43 @@ public class G20FTPClient {
     //Uploads a pre-made file from a local directory to the server
     private void uploadFile(boolean testmode) throws Exception {
         try {
-            //TODO: Mangler implementering
+            //Setting up socket for transfer, outputstream to the server and inputstream from the file
+            System.out.print("LOCAL:\tPreparing file, streams and datasocket ... ");
+            dataSocket = new Socket(STD_URL,dataPort);
+            bufferedOutputStream = new BufferedOutputStream(dataSocket.getOutputStream());
+            File toUpload = new File("./FileToUpload.txt");
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(toUpload));
+            System.out.print("SUCCESS\n");
+
+            //Telling server where and what to store
+            System.out.print("Requesting server to change directory and store the file ... ");
+            serverCommand("CWD /incoming");
+            serverReply(1);
+            serverCommand("STOR " + toUpload.getName());
+            serverReply(1);
+            System.out.print("SUCCESS\n");
+
+            //Transfers the file by reading it and writing it to the outputstream to the server
+            System.out.print("LOCAL:\tTransferring file to server ... ");
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
+                bufferedOutputStream.write(buffer,0,bytesRead);
+            }
+            bufferedOutputStream.flush();
+            System.out.print("SUCCESS\n");
+            System.out.println("LOCAL\tFile can not be found located at: ftp://ftp.cs.brown.edu/incoming/");
+
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("!!! - Failed to upload file");
+        } finally {
+            if (bufferedInputStream != null) bufferedInputStream.close();
+            if (bufferedOutputStream != null) {
+                bufferedOutputStream.flush();
+                bufferedOutputStream.close();
+            }
+            if (dataSocket != null) dataSocket.close();
         }
     }
 
@@ -300,8 +335,9 @@ public class G20FTPClient {
             fileOutputStream.close();
         }
         if (bufferedInputStream != null) bufferedInputStream.close();
+        if (bufferedOutputStream != null) bufferedOutputStream.close();
         if (dataSocket != null) dataSocket.close();
-        if (commandSocket != null) commandSocket.close();
+        if (controlSocket != null) controlSocket.close();
         System.exit(0);
     }
 }
