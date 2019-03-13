@@ -107,7 +107,7 @@ public class G20FTPClient {
                         uploadFile(false);
                         break;
                     case "q":
-                        System.out.println("LOCAL:\tQutting program ...");
+                        System.out.println("LOCAL:\tQuitting program ...");
                         quietExit();
                         break;
                     default:
