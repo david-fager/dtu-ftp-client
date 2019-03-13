@@ -294,10 +294,9 @@ public class G20FTPClient {
             //Telling server where and what to store
             System.out.print("Requesting server to change directory and store the file ... ");
             serverCommand("CWD /incoming");
-            serverReply(1);
             serverCommand("STOR " + toUpload.getName());
-            serverReply(1);
             System.out.print("SUCCESS\n");
+            serverReply(2);
 
             //Transfers the file by reading it and writing it to the outputstream to the server
             System.out.print("LOCAL:\tTransferring file to server ... ");
