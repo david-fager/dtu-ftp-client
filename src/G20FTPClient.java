@@ -285,7 +285,7 @@ public class G20FTPClient {
             System.out.print("LOCAL:\tPreparing file, streams and datasocket ... ");
             dataSocket = new Socket(STD_URL,dataPort);
             bufferedOutputStream = new BufferedOutputStream(dataSocket.getOutputStream());
-            File toUpload = new File("./FileToUpload.txt");
+            File toUpload = new File("./TestUpload.txt");
             BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(toUpload));
             System.out.print("SUCCESS\n");
 
