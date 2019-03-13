@@ -93,7 +93,7 @@ public class G20FTPClient {
                         "#                                                                        #\n" +
                         "##########################################################################");
 
-                switch (userInput().toLowerCase()) {
+                switch (handleUserInput().toLowerCase()) {
                     case "tc":
                         downloadFile(true);
                         downloadFile(true);
@@ -131,7 +131,7 @@ public class G20FTPClient {
     }
 
     //Returns what the user writes to the scanner
-    private String userInput() throws Exception {
+    private String handleUserInput() throws Exception {
         try {
             System.out.print(">");
             return inputScanner.nextLine();
@@ -198,7 +198,7 @@ public class G20FTPClient {
                     filepath = "/u/dg/Collision.java";
                 }
             } else {
-                filepath = userInput();
+                filepath = handleUserInput();
             }
             if (filepath.equals("")) {
                 filepath = "/pub/README"; //Default
@@ -222,7 +222,7 @@ public class G20FTPClient {
                     fileName = "TestUnder1KB";
                 }
             } else {
-                fileName = userInput();
+                fileName = handleUserInput();
             }
             if (fileName.equals("")) {
                 fileName = "DownloadedFile.txt"; //Default
@@ -235,7 +235,7 @@ public class G20FTPClient {
             serverCommand("RETR " + filepath);
             System.out.print("SUCCESS\n");
             System.out.print("LOCAL:\tSaves the file as " + fileName + " ... ");
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[Integer.parseInt(reply[2])];
             int bytesRead;
             while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
                 fileOutputStream.write(buffer, 0, bytesRead);
@@ -249,7 +249,20 @@ public class G20FTPClient {
                 serverReply(3);
             }
 
-            //TODO: Mangler at udskrive 1KB af filen & kunne downloade to seperate filer
+            //Printing process of the first kilobyte
+            System.out.print("\nLOCAL: FIRST TRANSFERRED KILOBYTE\n");
+            int count = 1;
+            for (byte b : buffer) {
+                if (count == 1)
+                    System.out.print("FILE: ");
+                System.out.print((char)b);
+                if (b == 10) {
+                    System.out.print("FILE: ");
+                }
+                if (count++ > 1024)
+                    break;
+            }
+            System.out.print("\nLOCAL: END OF KILOBYTE\n\n");
 
         } catch (Exception e) {
             e.printStackTrace();
