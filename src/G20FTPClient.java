@@ -77,8 +77,6 @@ public class G20FTPClient {
 
             //Main while loop showing and managing the user's options
             while (true) {
-                serverCommand("SYST");
-                serverReply(1);
                 System.out.println("" +
                         "---------------- CONNECTED TO FTP SERVER " + STD_URL + " ----------------\n" +
                         "############################# G20 FTP Client #############################\n" +
