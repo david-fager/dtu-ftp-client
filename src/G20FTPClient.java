@@ -33,10 +33,11 @@ public class G20FTPClient {
             serverWriter = new BufferedWriter(new OutputStreamWriter(controlSocket.getOutputStream()));
             serverReader = new BufferedReader(new InputStreamReader(controlSocket.getInputStream()));
             System.out.print("SUCCESS\n");
-            serverReply(5);
+            serverReply(1);
 
             System.out.print("LOCAL:\tLogging in to FTP server ... ");
             serverCommand("USER " + STD_USERNAME);
+            serverCommand("PASS");
             System.out.print("SUCCESS\n");
             serverReply(1);
         } catch (Exception e) {
@@ -48,14 +49,14 @@ public class G20FTPClient {
     private void prepareDataChannel() throws Exception {
         try {
             System.out.print("LOCAL:\tRequesting server to set mode to passive ... ");
-            serverWriter.write("PASV\r\n");
-            serverWriter.flush();
+            //serverWriter.write("PASV\r\n");
+            //serverWriter.flush();
             System.out.print("SUCCESS\n");
-            String passiveInfo = serverReader.readLine();
-            String[] infoSplit = passiveInfo.split("\\D+");
-            dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
-            System.out.println("SERVER:\t" + passiveInfo);
-            System.out.println("LOCAL:\tData channel port set to: " + dataPort);
+            //String passiveInfo = serverReader.readLine();
+            //String[] infoSplit = passiveInfo.split("\\D+");
+            //dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
+            //System.out.println("SERVER:\t" + passiveInfo);
+            //System.out.println("LOCAL:\tData channel port set to: " + dataPort);
 
             System.out.print("LOCAL:\tRequesting server to set transfer type to binary ... ");
             serverCommand("TYPE I");
