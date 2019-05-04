@@ -39,7 +39,7 @@ public class G20FTPClient {
             serverCommand("USER " + STD_USERNAME);
             serverCommand("PASS");
             System.out.print("SUCCESS\n");
-            serverReply(1);
+            serverReply(2);
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("!!! - Failed control channel connection");
