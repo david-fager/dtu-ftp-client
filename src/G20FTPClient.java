@@ -4,7 +4,7 @@ import java.util.Scanner;
 
 public class G20FTPClient {
 
-    private final String STD_URL = "ftp.cs.brown.edu";
+    private final String STD_URL = "192.168.69.3";
     private final String STD_USERNAME = "anonymous";
     private int dataPort;
     private boolean firstDataConnection = true;
