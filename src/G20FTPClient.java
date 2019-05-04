@@ -210,12 +210,12 @@ public class G20FTPClient {
             //Ask server for the size of the file to download, to ensure the file even exists
             serverCommand("SIZE " + filepath);
             sizeReply = serverReply(1).split("\\s+");
-            if (sizeReply.length > 3) {
-                throw new Exception("!!! - File not found on server");
-            }
+            //if (sizeReply.length > 3) {
+            //    throw new Exception("!!! - File not found on server");
+            //}
 
             //Asks the user where to download the file to
-            System.out.println("LOCAL:\tEnter designated file name (E.g. MyFile.txt)");
+            //System.out.println("LOCAL:\tEnter designated file name (E.g. MyFile.txt)");
             if (testmode) {
                 if (firstDataConnection) {
                     fileName = "TestOver1KB";
@@ -226,7 +226,7 @@ public class G20FTPClient {
                 fileName = handleUserInput();
             }
             if (fileName.equals("")) {
-                fileName = "DownloadedFile.txt"; //Default
+                fileName = "gr20.csv"; //Default
                 System.out.println("LOCAL:\tUsing default: " + fileName);
             }
             fileOutputStream = new FileOutputStream(fileName);
@@ -243,13 +243,14 @@ public class G20FTPClient {
             }
             fileOutputStream.flush();
             System.out.print("SUCCESS\n");
+            /*
             if (firstDataConnection) {
                 serverReply(4);
                 firstDataConnection = false;
             } else {
                 serverReply(3);
             }
-
+            */
             //Printing process of the first kilobyte
             System.out.print("\nLOCAL: FIRST TRANSFERRED KILOBYTE\n");
             int count = 1;
