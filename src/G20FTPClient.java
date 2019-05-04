@@ -48,10 +48,10 @@ public class G20FTPClient {
 
     private void prepareDataChannel() throws Exception {
         try {
-            System.out.print("LOCAL:\tRequesting server to set mode to passive ... ");
+            //System.out.print("LOCAL:\tRequesting server to set mode to passive ... ");
             //serverWriter.write("PASV\r\n");
             //serverWriter.flush();
-            System.out.print("SUCCESS\n");
+            //System.out.print("SUCCESS\n");
             //String passiveInfo = serverReader.readLine();
             //String[] infoSplit = passiveInfo.split("\\D+");
             //dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
@@ -184,11 +184,11 @@ public class G20FTPClient {
         String[] sizeReply;
         try {
             //Opening the dataSocket. Sender automatically closes after file transfer.
-            System.out.print("LOCAL:\tOpening socket to " + STD_URL + " on port " + dataPort + " (data channel) ... ");
-            dataSocket = new Socket(STD_URL, dataPort);
-            System.out.print("SUCCESS\n");
-            System.out.print("LOCAL:\tInitializing data socket streams ... ");
-            bufferedInputStream = new BufferedInputStream(dataSocket.getInputStream());
+            //System.out.print("LOCAL:\tOpening socket to " + STD_URL + " on port " + dataPort + " (data channel) ... ");
+            //dataSocket = new Socket(STD_URL, dataPort);
+            //System.out.print("SUCCESS\n");
+            //System.out.print("LOCAL:\tInitializing data socket streams ... ");
+            bufferedInputStream = new BufferedInputStream(controlSocket.getInputStream());
             System.out.print("SUCCESS\n");
 
             //Asks user to specify server filepath for file to download if test is not being run
