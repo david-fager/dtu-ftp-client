@@ -7,12 +7,11 @@ public class G20FTPClient {
     private final String STD_URL = "192.168.69.3";
     private final String STD_USERNAME = "anonymous";
     private int dataPort;
-    private boolean firstDataConnection = true;
 
     private Socket controlSocket;
     private Socket dataSocket;
     private BufferedWriter serverWriter;
-    private BufferedReader serverReader;
+    private Scanner serverReader;
     private BufferedInputStream bufferedInputStream;
     private BufferedOutputStream bufferedOutputStream;
     private FileOutputStream fileOutputStream;
@@ -31,14 +30,14 @@ public class G20FTPClient {
 
             System.out.print("LOCAL:\tInitializing control socket streams ... ");
             serverWriter = new BufferedWriter(new OutputStreamWriter(controlSocket.getOutputStream()));
-            serverReader = new BufferedReader(new InputStreamReader(controlSocket.getInputStream()));
+            serverReader = new Scanner(new InputStreamReader(controlSocket.getInputStream()));
             System.out.print("SUCCESS\n");
-            serverReply(5);
+            serverReply();
 
             System.out.print("LOCAL:\tLogging in to FTP server ... ");
             serverCommand("USER " + STD_USERNAME);
             System.out.print("SUCCESS\n");
-            serverReply(1);
+            serverReply();
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("!!! - Failed control channel connection");
@@ -51,7 +50,7 @@ public class G20FTPClient {
             serverWriter.write("PASV\r\n");
             serverWriter.flush();
             System.out.print("SUCCESS\n");
-            String passiveInfo = serverReader.readLine();
+            String passiveInfo = serverReply();
             String[] infoSplit = passiveInfo.split("\\D+");
             dataPort = Integer.parseInt(infoSplit[5]) * 256 + Integer.parseInt(infoSplit[6]);
             System.out.println("SERVER:\t" + passiveInfo);
@@ -60,7 +59,7 @@ public class G20FTPClient {
             System.out.print("LOCAL:\tRequesting server to set transfer type to binary ... ");
             serverCommand("TYPE I");
             System.out.print("SUCCESS\n");
-            serverReply(1);
+            serverReply();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -85,7 +84,6 @@ public class G20FTPClient {
                         "#     ENTER A CHARACTER TO CONTINUE                                      #\n" +
                         "#                                                                        #\n" +
                         "#     ACCEPTED COMMANDS:                                                 #\n" +
-                        "#     > TC - Test the client with 2 downloads and 1 upload               #\n" +
                         "#     > DL - Download file from server                                   #\n" +
                         "#     > UP - Upload file to server                                       #\n" +
                         "#     > Q - Quit the program                                             #\n" +
@@ -93,16 +91,11 @@ public class G20FTPClient {
                         "##########################################################################");
 
                 switch (handleUserInput().toLowerCase()) {
-                    case "tc":
-                        downloadFile(true);
-                        downloadFile(true);
-                        uploadFile(true);
-                        break;
                     case "dl":
-                        downloadFile(false);
+                        downloadFile();
                         break;
                     case "up":
-                        uploadFile(false);
+                        uploadFile();
                         break;
                     case "q":
                         System.out.println("LOCAL:\tQuitting program ...");
@@ -152,22 +145,12 @@ public class G20FTPClient {
     }
 
     //Prints and returns server's reply from local inputstream. Should be called when commanding the server
-    private String serverReply(int expectedReplies) throws Exception {
-        String reply, temp;
+    private String serverReply() throws Exception {
+        String reply = "";
         try {
-            if (expectedReplies == 1) {
-                temp = serverReader.readLine();
-                System.out.println("SERVER:\t" + temp);
-                reply = "SERVER:\t" + temp;
-            } else {
-                temp = serverReader.readLine();
-                System.out.println("SERVER:\t" + temp);
-                reply = "SERVER:\t" + temp;
-                for (int i = 1; i < expectedReplies; i++) {
-                    temp = serverReader.readLine();
-                    System.out.println("SERVER:\t" + temp);
-                    reply += "\nSERVER:\t" + temp;
-                }
+            while (serverReader.hasNextLine()){
+                reply += "\nSERVER:\t" + serverReader.nextLine();
+                System.out.println("SERVER:\t" + reply);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -177,7 +160,7 @@ public class G20FTPClient {
     }
 
     //Downloads a file from the FTP server
-    private void downloadFile(boolean testmode) throws Exception {
+    private void downloadFile() throws Exception {
         String filepath;
         String fileName;
         String[] sizeReply;
@@ -192,42 +175,33 @@ public class G20FTPClient {
 
             //Asks user to specify server filepath for file to download if test is not being run
             System.out.println("LOCAL:\tEnter the filepath for the file on the server (E.g.: /pub/README)");
-            if (testmode) {
-                if (firstDataConnection) {
-                    filepath = "/pub/README";
-                } else {
-                    filepath = "/u/dg/Collision.java";
-                }
-            } else {
-                filepath = handleUserInput();
-            }
-            if (filepath.equals("")) {
-                filepath = "/pub/README"; //Default
-                System.out.println("LOCAL:\tUsing default: " + filepath);
-            }
+
+            filepath = handleUserInput();
+
+            // DEFAULT FILEPATH
+//            if (filepath.equals("")) {
+//                filepath = "/pub/README"; //Default
+//                System.out.println("LOCAL:\tUsing default: " + filepath);
+//            }
 
             //Ask server for the size of the file to download, to ensure the file even exists
             serverCommand("SIZE " + filepath);
-            sizeReply = serverReply(1).split("\\s+");
+            sizeReply = serverReply().split("\\s+");
             if (sizeReply.length > 3) {
                 throw new Exception("!!! - File not found on server");
             }
 
             //Asks the user where to download the file to
             System.out.println("LOCAL:\tEnter designated file name (E.g. MyFile.txt)");
-            if (testmode) {
-                if (firstDataConnection) {
-                    fileName = "TestOver1KB";
-                } else {
-                    fileName = "TestUnder1KB";
-                }
-            } else {
-                fileName = handleUserInput();
-            }
-            if (fileName.equals("")) {
-                fileName = "DownloadedFile.txt"; //Default
-                System.out.println("LOCAL:\tUsing default: " + fileName);
-            }
+
+            fileName = handleUserInput();
+
+            // DEFAULT FILE NAME
+//            if (fileName.equals("")) {
+//                fileName = "DownloadedFile.txt"; //Default
+//                System.out.println("LOCAL:\tUsing default: " + fileName);
+//            }
+
             fileOutputStream = new FileOutputStream(fileName);
 
             //Tells server to retrieve file, reads it from the data socket and saves it
@@ -242,12 +216,7 @@ public class G20FTPClient {
             }
             fileOutputStream.flush();
             System.out.print("SUCCESS\n");
-            if (firstDataConnection) {
-                serverReply(4);
-                firstDataConnection = false;
-            } else {
-                serverReply(3);
-            }
+            serverReply();
 
             //Printing process of the first kilobyte
             System.out.print("\nLOCAL: FIRST TRANSFERRED KILOBYTE\n");
@@ -279,7 +248,7 @@ public class G20FTPClient {
     }
 
     //Uploads a pre-made file from a local directory to the server
-    private void uploadFile(boolean testmode) throws Exception {
+    private void uploadFile() throws Exception {
         try {
             //Setting up socket for transfer, outputstream to the server and inputstream from the file
             System.out.print("LOCAL:\tPreparing file, streams and datasocket ... ");
@@ -294,7 +263,7 @@ public class G20FTPClient {
             serverCommand("CWD /incoming");
             serverCommand("STOR " + toUpload.getName());
             System.out.print("SUCCESS\n");
-            serverReply(2);
+            serverReply();
 
             //Transfers the file by reading it and writing it to the outputstream to the server
             System.out.print("LOCAL:\tTransferring file to server ... ");
